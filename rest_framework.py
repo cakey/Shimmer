@@ -116,13 +116,16 @@ class Mimer(object):
         
         #if ctype is None or ctype == 'application/json':
         try:
-            request.data = json.loads(request.raw_post_data)
+            if request.raw_post_data == "":
+                request.data = ""
+            else:
+                request.data = json.loads(request.raw_post_data)
             
             # Reset both POST and PUT from request, as its
             # misleading having their presence around.
             request.POST = request.PUT = dict()
         except (TypeError, ValueError):
-            raise InvalidParameter("content, mimetype pairing")
+            raise InvalidParameter("JSON")
         #else:
         #    raise InvalidParameter("Expected 'CONTENT_TYPE' to be 'application/json'", override=True)
         
@@ -389,16 +392,16 @@ class Resource(object):
             3 construct the response, using the appropriate amount of detail
             4 render the response to json
         """
-        print("test")
-        logging.info("in framework resource")
+        logging.info("     >>>> framework resource (enter)")
         # try to keep as much in the try block as possible, as we want pretty error messages at the least
         try:
+            # try to find the user_id
+            try:
+                request.user_id = self.auth(request)
+            except AttributeError:
+                pass
+        
             rm = request.method.upper()
-
-            # Django's internal mechanism doesn't pick up
-            # PUT request, so we trick it a little here.
-            if rm == "PUT":
-                coerce_put_post(request)
 
             handler = self.handler
             handler.status = None # reset status
@@ -451,19 +454,5 @@ class Resource(object):
         
         #logging.info(stream)
         resp = HttpResponse(stream, mimetype=mimetype, status=status)
-        logging.info("out framework resource")
-        return resp
-        
-def coerce_put_post(request):
-    """
-    Django doesn't particularly understand REST.
-    In case we send data over PUT, Django won't
-    actually look at the data and load it. We need
-    to twist its arm here.
-    """
-    if request.method == "PUT":
-        request.method = "POST"
-        request._load_post_and_files()
-        request.method = "PUT"
-            
-        request.PUT = request.POST    
+        logging.info(" <<<< framework resource (exit)")
+        return resp 
