@@ -413,6 +413,7 @@ class Resource(object):
             meth = getattr(handler, self.callmap.get(rm), False)
             
             # tries to call the view
+            logging.info("%s: %s" % (handler.__class__.__name__, self.callmap.get(rm)))
             result = meth(request, *args, **kwargs)
             
             # construct the response using the appropriate detail then render to json
