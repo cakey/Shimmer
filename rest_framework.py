@@ -114,7 +114,6 @@ class Mimer(object):
         ctype = request.META.get('CONTENT_TYPE', None)
         request.content_type = 'application/json'
         
-        #if ctype is None or ctype == 'application/json':
         try:
             if request.raw_post_data == "":
                 request.data = ""
@@ -126,8 +125,6 @@ class Mimer(object):
             request.POST = request.PUT = dict()
         except (TypeError, ValueError):
             raise InvalidParameter("JSON")
-        #else:
-        #    raise InvalidParameter("Expected 'CONTENT_TYPE' to be 'application/json'", override=True)
         
         return request
         
