@@ -162,3 +162,42 @@ class TestAuthHook(unittest.TestCase):
         self.assertTrue('error' in json.loads(output.content))
         self.assertEqual(json.loads(output.content)['error']['type'], 'APIError')
         self.assertEqual(output.status_code, 500)
+        
+class TestMethodPassing(unittest.TestCase):
+    def test_can_pass_parameter(self):
+    
+        passed_param = "12345"
+        class Handler(rest_framework.BaseHandler):
+            def read(slf, request, param):
+                self.assertEqual(param, passed_param)
+                return param
+ 
+        resource = rest_framework.Resource(Handler)
+        
+        output = resource(Request("get"), passed_param)
+        self.assertEqual(json.loads(output.content)['data'], passed_param)
+        self.assertEqual(output.status_code, 200)
+    
+    def test_handles_passing_too_few_parameters(self):
+    
+        class Handler(rest_framework.BaseHandler):
+            def read(slf, request, param):
+                pass
+        resource = rest_framework.Resource(Handler)
+        
+        output = resource(Request("get"))
+        self.assertTrue('error' in json.loads(output.content))
+        self.assertEqual(json.loads(output.content)['error']['type'], 'APIError')
+        self.assertEqual(output.status_code, 500)
+        
+    def test_handles_passing_too_many_parameters(self):
+    
+        class Handler(rest_framework.BaseHandler):
+            def read(slf, request, param):
+                pass
+        resource = rest_framework.Resource(Handler)
+        
+        output = resource(Request("get"), 1, 2)
+        self.assertTrue('error' in json.loads(output.content))
+        self.assertEqual(json.loads(output.content)['error']['type'], 'APIError')
+        self.assertEqual(output.status_code, 500)
