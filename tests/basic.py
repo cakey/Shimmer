@@ -95,13 +95,52 @@ class TestJson(unittest.TestCase):
     def test_handles_good_json(self):
     
         raw_data = {"hi":"moo"}
+        json_dump = json.dumps(raw_data)
+        
         class Handler(rest_framework.BaseHandler):
             def create(slf, request):
                 self.assertEqual(request.data, raw_data)
                 return request.data
                 
-        json_dump = json.dumps(raw_data)
         resource = rest_framework.Resource(Handler)
         output = resource(Request("post", json_dump))
         self.assertEqual(json.loads(output.content)['data'], raw_data)
         self.assertEqual(output.status_code, 200)
+        
+class TestAuthHook(unittest.TestCase):
+    def test_assigns_user_id_correctly(self):
+    
+        expected_user = "my_user"
+        
+        class Handler(rest_framework.BaseHandler):
+            def read(slf, request):
+                self.assertEqual(request.user_id, expected_user)
+                return request.user_id
+                
+        class R(rest_framework.Resource):
+            def auth(self, request):
+                return expected_user
+        resource = R(Handler)
+        
+        output = resource(Request("get"))
+        self.assertEqual(json.loads(output.content)['data'], expected_user)
+        self.assertEqual(output.status_code, 200)
+        
+    def test_handles_bad_auth_func_gracefully(self):
+    
+        expected_user = "my_user"
+        
+        class Handler(rest_framework.BaseHandler):
+            def read(slf, request):
+                self.assertEqual(request.user_id, expected_user)
+                return request.user_id
+                
+        class R(rest_framework.Resource):
+            def auth(self, request):
+                1/0
+        resource = R(Handler)
+        
+        output = resource(Request("get"))
+        self.assertTrue('error' in json.loads(output.content))
+        self.assertEqual(json.loads(output.content)['error']['type'], 'APIError')
+        self.assertEqual(output.status_code, 500)
