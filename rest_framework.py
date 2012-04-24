@@ -111,7 +111,6 @@ class Mimer(object):
         there.
         """    
         
-        ctype = request.META.get('CONTENT_TYPE', None)
         request.content_type = 'application/json'
         
         try:
