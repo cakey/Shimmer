@@ -79,3 +79,29 @@ class TestEdgeCases(unittest.TestCase):
         self.assertTrue('error' in json.loads(output.content))
         self.assertEqual(json.loads(output.content)['error']['type'], 'APIError')
         self.assertEqual(output.status_code, 500)
+        
+class TestJson(unittest.TestCase):
+    def test_handles_bad_json_gracefully(self):
+        class Handler(rest_framework.BaseHandler):
+            def create(self, request):
+                return request.data
+                
+        resource = rest_framework.Resource(Handler)
+        output = resource(Request("post", 23423))
+        self.assertTrue('error' in json.loads(output.content))
+        self.assertEqual(json.loads(output.content)['error']['type'], 'InvalidParameter')
+        self.assertEqual(output.status_code, 400)
+
+    def test_handles_good_json(self):
+    
+        raw_data = {"hi":"moo"}
+        class Handler(rest_framework.BaseHandler):
+            def create(slf, request):
+                self.assertEqual(request.data, raw_data)
+                return request.data
+                
+        json_dump = json.dumps(raw_data)
+        resource = rest_framework.Resource(Handler)
+        output = resource(Request("post", json_dump))
+        self.assertEqual(json.loads(output.content)['data'], raw_data)
+        self.assertEqual(output.status_code, 200)
