@@ -25,7 +25,7 @@ class Request(object):
     def REQUEST(self):
         return {}
 
-class TestTest(unittest.TestCase):
+class TestBasicOperations(unittest.TestCase):
     def test_get(self):
         class Handler(rest_framework.BaseHandler):
             def read(self, request):
@@ -66,3 +66,16 @@ class TestTest(unittest.TestCase):
         output = resource(Request("delete"))
         self.assertEqual(json.loads(output.content), {'data':"test_output"})
         self.assertEqual(output.status_code, 200)
+        
+class TestEdgeCases(unittest.TestCase):
+    def test_handles_error_gracefully_debug_off(self):
+        class Handler(rest_framework.BaseHandler):
+            def read(self, request):
+                1/0
+                
+        resource = rest_framework.Resource(Handler)
+        
+        output = resource(Request("get"))
+        self.assertTrue('error' in json.loads(output.content))
+        self.assertEqual(json.loads(output.content)['error']['type'], 'APIError')
+        self.assertEqual(output.status_code, 500)
