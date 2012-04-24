@@ -406,7 +406,10 @@ class Resource(object):
                 mimer = Mimer()
                 mimer.translate(request)
             
-            meth = getattr(handler, self.callmap.get(rm), False)
+            method_string = self.callmap.get(rm, None)
+            if method_string is None:
+                raise NotImplemented(rm)
+            meth = getattr(handler, method_string, False)
             
             # tries to call the view
             logging.info("%s: %s" % (handler.__class__.__name__, self.callmap.get(rm)))

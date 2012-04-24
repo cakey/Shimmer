@@ -80,6 +80,24 @@ class TestEdgeCases(unittest.TestCase):
         self.assertEqual(json.loads(output.content)['error']['type'], 'APIError')
         self.assertEqual(output.status_code, 500)
         
+    def test_handles_wrong_method_gracefully(self):
+    
+        resource = rest_framework.Resource(rest_framework.BaseHandler)
+        
+        output = resource(Request("get"))
+        self.assertTrue('error' in json.loads(output.content))
+        self.assertEqual(json.loads(output.content)['error']['type'], 'NotImplemented')
+        self.assertEqual(output.status_code, 405)
+    
+    def test_handles_bad_method_gracefully(self):
+    
+        resource = rest_framework.Resource(rest_framework.BaseHandler)
+        
+        output = resource(Request("nosuchmethod!"))
+        self.assertTrue('error' in json.loads(output.content))
+        self.assertEqual(json.loads(output.content)['error']['type'], 'NotImplemented')
+        self.assertEqual(output.status_code, 405)
+        
 class TestJson(unittest.TestCase):
     def test_handles_bad_json_gracefully(self):
         class Handler(rest_framework.BaseHandler):
