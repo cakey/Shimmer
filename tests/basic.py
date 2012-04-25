@@ -234,12 +234,11 @@ class TestEmitters(unittest.TestCase):
                 return MockTable(field1="trolol", field2="cowgoesmoo")
 
         class MyEmitter(rest_framework.Emitter):
-            def construct(self, data):
-                massagers = {MockTable: self.massage}
+            def setup(self):
+                self.manips = []
+                self.massagers = {MockTable: self.massage}
                 
-                return self._construct(data, manips=[], massagers=massagers)
-                
-            def massage(self, model_dict, data):
+            def massage(self, model_dict, model_instance):
                 model_dict['field2'] = "COMPLETELYDIFFERENT"
                 return model_dict
                 
@@ -263,22 +262,20 @@ class TestEmitters(unittest.TestCase):
                 return MockTable(field1="trolol", field2="cowgoesmoo")
 
         class MyEmitter(rest_framework.Emitter):
-            def construct(self, data):
-                massagers = {MockTable: self.massage}
+            def setup(self):
+                self.manips = []
+                self.massagers = {MockTable: self.massage}
                 
-                return self._construct(data, manips=[], massagers=massagers)
-                
-            def massage(self, model_dict, data):
+            def massage(self, model_dict, model_instance):
                 model_dict['field2'] = "COMPLETELYDIFFERENT"
                 return model_dict
                 
         class MyOtherEmitter(rest_framework.Emitter):
-            def construct(self, data):
-                massagers = {MockTable: self.massage}
+            def setup(self):
+                self.manips = []
+                self.massagers = {MockTable: self.massage}
                 
-                return self._construct(data, manips=[], massagers=massagers)
-                
-            def massage(self, model_dict, data):
+            def massage(self, model_dict, model_instance):
                 model_dict['field2'] = "ishouldbethis"
                 return model_dict
                 
@@ -303,22 +300,18 @@ class TestEmitters(unittest.TestCase):
                 return MockTable(field1="trolol", field2="cowgoesmoo")
 
         class MyEmitter(rest_framework.Emitter):
-            def construct(self, data):
-                manips = [self.manip]
-                massagers = {MockTable: self.massage}
-                
-                return self._construct(data, manips=manips, massagers=massagers)
+            def setup(self):
+                self.manips = [self.manip]
+                self.massagers = {MockTable: self.massage}
                
-            def manip(self, data, ids):
-                data['table'] = {}
-                for id in ids['table']:
-                    data['table'][id] = id + 1
+            def manip(self):
+                self.data['table'] = {}
+                for id in self.ids['table']:
+                    self.data['table'][id] = id + 1
                 
-                return data, ids
-                
-            def massage(self, model_dict, data):
-                if self._pre:
-                    self._ids['table'].add(5)
+            def massage(self, model_dict, model_instace):
+                if self.collecting:
+                    self.ids['table'].add(5)
                 else:
                     model_dict['field2'] = self.data['table'][5]
                     
@@ -334,3 +327,35 @@ class TestEmitters(unittest.TestCase):
         self.assertEqual(json.loads(output.content)['data']['field2'], 6)
         self.assertEqual(output.status_code, 200)
         
+    def test_calling_construct_manually(self):
+        class MockTable(models.Model):
+            field1          =   models.TextField()
+            field2          =   models.TextField()
+            
+        class MockTable2(models.Model):
+            field1          =   models.TextField()
+            field2          =   models.TextField()
+            
+        class Handler(rest_framework.BaseHandler):
+            def read(slf, request):
+                return MockTable(field1="trolol", field2="cowgoesmoo")
+
+
+        class MyEmitter(rest_framework.Emitter):
+            def setup(self):
+                self.manips = []
+                self.massagers = {MockTable: self.massage}
+                
+            def massage(self, model_dict, model_instace):
+                model_dict['field2'] = self.construct(MockTable2(field1="1", field2="2"))
+                return model_dict
+                
+        class R(rest_framework.Resource):
+            output = {'default':MyEmitter}
+               
+        resource = R(Handler)
+        
+        output = resource(Request("get"))
+        self.assertEqual(json.loads(output.content)['data']['field1'], "trolol")
+        self.assertEqual(json.loads(output.content)['data']['field2']['field1'], "1")
+        self.assertEqual(output.status_code, 200) 

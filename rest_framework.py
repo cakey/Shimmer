@@ -141,13 +141,20 @@ class Emitter(object):
         self.DATE_FORMAT = "%Y-%m-%d"
         self.TIME_FORMAT = "%H:%M:%S"
         self.mimetype = 'application/json; charset=utf-8'
+        # initialise:
+        self.manips = []
+        self.massagers = {}
+        try:
+            self.setup()
+        except AttributeError:
+            pass
 
     @property
     def django_user(self):
         if self.request is not None:
             return self.request.user
               
-    def _any(self, thing):
+    def construct(self, thing):
         """
         Dispatch, all types are routed through here.
         """
@@ -187,7 +194,7 @@ class Emitter(object):
         for f in data._meta.fields:
                 #logging.debug(f.attname)
                 if f.attname not in self.exclude_fields:
-                    ret[f.attname] = self._any(getattr(data, f.attname))
+                    ret[f.attname] = self.construct(getattr(data, f.attname))
                   
         # massage the data depending on what model it is
         if type(data) in self.massagers:
@@ -200,20 +207,20 @@ class Emitter(object):
         """
         Querysets.
         """
-        return [ self._any(v) for v in data]
+        return [ self.construct(v) for v in data]
             
     def _list(self, data):
         """
         Lists.
         """
-        return [ self._any(v) for v in data]
+        return [ self.construct(v) for v in data]
         
     def _dict(self, data):
         """
         Dictionaries.
         """
         #logging.info([k for k in data])
-        return {k:self._any(v) for k, v in data.iteritems()}
+        return {k:self.construct(v) for k, v in data.iteritems()}
     
     def _pre_construct(self, data):
         """
@@ -222,14 +229,14 @@ class Emitter(object):
             data for, so we can collect it in constant time.
         """
         logging.info("pre constructing (enter)")
-        self._ids = collections.defaultdict(set)
-        self._pre = True
-        pre_construct_data = self._any(data)
-        self._pre = False
+        self.ids = collections.defaultdict(set)
+        self.collecting = True
+        pre_construct_data = self.construct(data)
+        self.collecting = False
         logging.info("pre constructing (exit)")
         return pre_construct_data
         
-    def _construct(self, data, manips=None, massagers=None):
+    def _construct(self, data):
         """
         Recursively serialize a lot of types, and
         in cases where it doesn't recognize the type,
@@ -238,33 +245,21 @@ class Emitter(object):
         Returns the data constructed.
         """
         logging.info("overall constructing (enter)")
-        
-        if manips is None:
-            manips = []
-        
-        if massagers is None:
-            massagers = {}
             
-        self.massagers = massagers
-        
- 
         pre_construct_data = self._pre_construct(data)
         # Kickstart the seralizin'.
         
          #if it found no ids, then we can just use the pre construct data
-        if any((len(ids) > 0 for label, ids in self._ids.iteritems())):
-            ids = self._ids #DRPEPPER
-            manipdata = collections.defaultdict(dict)
+        if any((len(ids) > 0 for label, ids in self.ids.iteritems())):
+            self.data = collections.defaultdict(dict)
 
                       
-            for manip in manips:
-                manipdata, ids = manip(manipdata, ids)
-            
-            self.data = manipdata
+            for manip in self.manips:
+                manip()
             
             logging.debug("constructing (enter)")
             # extend the output using the collated data we've found
-            data =  self._any(data)
+            data =  self.construct(data)
             logging.debug("constructing (exit)")
             
             logging.debug("overall constructing (exit)")
@@ -273,10 +268,6 @@ class Emitter(object):
             logging.debug("overall constructing (exit)")
             return pre_construct_data
             
-    def construct(self, *args, **kwargs):
-        """ overwrite this to provide different manips """
-        return self._construct(*args, **kwargs)
-        
     def render(self, data):
         """ Implements a default JSON renderer """        
         logging.info("render (start)")
@@ -383,7 +374,7 @@ class Resource(object):
             mimetype = emitter.mimetype
 
 
-            construct = emitter.construct(data=result)
+            construct = emitter._construct(data=result)
             stream = emitter.render({'data':construct})
             
             if handler.status is None:

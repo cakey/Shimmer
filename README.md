@@ -104,39 +104,34 @@ from Shimmer.rest_framework import Emitter
 import myapp.models as mod
 
 class AnEmitter(Emitter):
-    def construct(self, data):
+    def setup(self):
         """
             Calls the base constructor with the manips/massagers you want.
         """     
-        manips = [self.get_locations, self.get_comments]
+        self.manips = [self.get_locations, self.get_comments]
+        self.massagers = { mod.Event:self.massage_event}
         
-        massagers = { mod.Event:self.massage_event}
-        
-        return self._construct(data, manips=manips, massagers=massagers)
-        
-    def get_locations(self, data, ids):
+    def get_locations(self):
         """
             This is an example data collection function, that collates a certain type of
             information we need.
             Data and ids are dictionaries that store the data we need.
         """
-        data['locations'] = mod.Location.objects.in_bulk(list(ids['locations']))
-        return data, ids
+        self.data['locations'] = mod.Location.objects.in_bulk(list(self.ids['locations']))
         
-    def get_comments(self, data, ids):
-        data['comments'] = mod.Comment.objects.in_bulk(list(ids['comments']))
-        return data, ids
+    def get_comments(self):
+        self.data['comments'] = mod.Comment.objects.in_bulk(list(self.ids['comments']))
 
-    def massage_event(self, model_dict, data):
+    def massage_event(self, model_dict, model_instance):
         """
             Example of an massager to change the output of a model instance.
         """
-        if self._pre:
-            self._ids['locations'].add(model_dict['location_id']
-            self._ids['comments'].add(model_dict['comment_id']
+        if self.collecting:
+            self.ids['locations'].add(model_dict['location_id']
+            self.ids['comments'].add(model_dict['comment_id']
         else:
-            model_dict['location'] = self._any(self.data['locations'][model_dict['location_id'])
-            model_dict['comment'] = self._any(self.data['comments'][model_dict['comment_id'])
+            model_dict['location'] = self.construct(self.data['locations'][model_dict['location_id'])
+            model_dict['comment'] = self.construct(self.data['comments'][model_dict['comment_id'])
             
             del model_dict['location_id']
             del model_dict['comment_id']
