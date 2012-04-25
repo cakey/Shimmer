@@ -4,7 +4,7 @@ It aids in routing requests to the appropriate method, handling exceptions, enco
 
 Shimmer's requirements are currently django and dateutil (hopefully removed soon).
 
-Basic Usage:
+Getting Started:
 ------------
 
 In views.py:
@@ -69,8 +69,8 @@ urlpattern = patterns('',
 GETting /myuserid/ will return a json object of {'data':"user_id_of_user"}
 
 
- Emitters
- --------
+Emitters:
+---------
  
  (Warning: The api needs (a lot of !) work here, as it's just grown organically in the projects its been used in.)
  
@@ -116,17 +116,18 @@ class AnEmitter(Emitter):
         
     def get_locations(self, data, ids):
         """
-            This is an example data collection function, that collates a certain type of information we need.
-            Data and ids are dictionaries that store the data we need
+            This is an example data collection function, that collates a certain type of
+            information we need.
+            Data and ids are dictionaries that store the data we need.
         """
         data['locations'] = mod.Location.objects.in_bulk(list(ids['locations']))
         return data, ids
         
     def get_comments(self, data, ids):
-        data['comments'] = mod.Location.objects.in_bulk(list(ids['comments']))
+        data['comments'] = mod.Comment.objects.in_bulk(list(ids['comments']))
         return data, ids
 
-    def massage_event(self, model_dict, data
+    def massage_event(self, model_dict, data):
         """
             Example of an massager to change the output of a model instance.
         """
@@ -154,7 +155,8 @@ There is a lot of magic there, which will be reduced as the api is improved. The
 * self.data refers to the data that was edited in the manips
 * we return the modified dictionary of data
 
-
+Notes
+-----
 
 For other use cases, look in the tests or ask. 
 There are few tests directly for Shimmer at the moment, but the framework is used in a number of applications that are extensively tested.

@@ -1,10 +1,11 @@
 import unittest
 import json
-
 import os
 
 # Set the DJANGO_SETTINGS_MODULE environment variable.
 os.environ['DJANGO_SETTINGS_MODULE'] = "mock_settings"
+
+from django.db import models
 
 import rest_framework
 
@@ -12,7 +13,11 @@ class Request(object):
     def __init__(self, method, post_data=""):
         self._method = method
         self._post_data = post_data
-        
+        self._REQUEST = {}
+    
+    def set_get(self, **kwargs):
+        self._REQUEST = kwargs
+    
     @property
     def raw_post_data(self):
         return self._post_data
@@ -23,7 +28,7 @@ class Request(object):
 
     @property
     def REQUEST(self):
-        return {}
+        return self._REQUEST
 
 class TestBasicOperations(unittest.TestCase):
     def test_get(self):
@@ -201,3 +206,131 @@ class TestMethodPassing(unittest.TestCase):
         self.assertTrue('error' in json.loads(output.content))
         self.assertEqual(json.loads(output.content)['error']['type'], 'APIError')
         self.assertEqual(output.status_code, 500)
+        
+class TestEmitters(unittest.TestCase):
+    def test_emitter_can_handle_model_instance(self):
+        class MockTable(models.Model):
+            field1          =   models.TextField()
+            field2          =   models.TextField()
+
+        class Handler(rest_framework.BaseHandler):
+            def read(slf, request):
+                return MockTable(field1="trolol", field2="cowgoesmoo")
+
+        resource = rest_framework.Resource(Handler)
+        
+        output = resource(Request("get"))
+        self.assertEqual(json.loads(output.content)['data']['field1'], "trolol")
+        self.assertEqual(json.loads(output.content)['data']['field2'], "cowgoesmoo")
+        self.assertEqual(output.status_code, 200)
+        
+    def test_emitter_invokes_massager(self):
+        class MockTable(models.Model):
+            field1          =   models.TextField()
+            field2          =   models.TextField()
+
+        class Handler(rest_framework.BaseHandler):
+            def read(slf, request):
+                return MockTable(field1="trolol", field2="cowgoesmoo")
+
+        class MyEmitter(rest_framework.Emitter):
+            def construct(self, data):
+                massagers = {MockTable: self.massage}
+                
+                return self._construct(data, manips=[], massagers=massagers)
+                
+            def massage(self, model_dict, data):
+                model_dict['field2'] = "COMPLETELYDIFFERENT"
+                return model_dict
+                
+        class R(rest_framework.Resource):
+            output = {'default':MyEmitter}
+               
+        resource = R(Handler)
+        
+        output = resource(Request("get"))
+        self.assertEqual(json.loads(output.content)['data']['field1'], "trolol")
+        self.assertEqual(json.loads(output.content)['data']['field2'], "COMPLETELYDIFFERENT")
+        self.assertEqual(output.status_code, 200)
+
+    def test_emitter_respects_output_parameter(self):
+        class MockTable(models.Model):
+            field1          =   models.TextField()
+            field2          =   models.TextField()
+
+        class Handler(rest_framework.BaseHandler):
+            def read(slf, request):
+                return MockTable(field1="trolol", field2="cowgoesmoo")
+
+        class MyEmitter(rest_framework.Emitter):
+            def construct(self, data):
+                massagers = {MockTable: self.massage}
+                
+                return self._construct(data, manips=[], massagers=massagers)
+                
+            def massage(self, model_dict, data):
+                model_dict['field2'] = "COMPLETELYDIFFERENT"
+                return model_dict
+                
+        class MyOtherEmitter(rest_framework.Emitter):
+            def construct(self, data):
+                massagers = {MockTable: self.massage}
+                
+                return self._construct(data, manips=[], massagers=massagers)
+                
+            def massage(self, model_dict, data):
+                model_dict['field2'] = "ishouldbethis"
+                return model_dict
+                
+        class R(rest_framework.Resource):
+            output = {'default':MyEmitter, 'hello':MyOtherEmitter}
+               
+        resource = R(Handler)
+        req = Request("get")
+        req.set_get(output='hello')
+        output = resource(req)
+        self.assertEqual(json.loads(output.content)['data']['field1'], "trolol")
+        self.assertEqual(json.loads(output.content)['data']['field2'], "ishouldbethis")
+        self.assertEqual(output.status_code, 200)
+        
+    def test_emitter_invokes_massager_and_manipper(self):
+        class MockTable(models.Model):
+            field1          =   models.TextField()
+            field2          =   models.TextField()
+
+        class Handler(rest_framework.BaseHandler):
+            def read(slf, request):
+                return MockTable(field1="trolol", field2="cowgoesmoo")
+
+        class MyEmitter(rest_framework.Emitter):
+            def construct(self, data):
+                manips = [self.manip]
+                massagers = {MockTable: self.massage}
+                
+                return self._construct(data, manips=manips, massagers=massagers)
+               
+            def manip(self, data, ids):
+                data['table'] = {}
+                for id in ids['table']:
+                    data['table'][id] = id + 1
+                
+                return data, ids
+                
+            def massage(self, model_dict, data):
+                if self._pre:
+                    self._ids['table'].add(5)
+                else:
+                    model_dict['field2'] = self.data['table'][5]
+                    
+                return model_dict
+                
+        class R(rest_framework.Resource):
+            output = {'default':MyEmitter}
+               
+        resource = R(Handler)
+        
+        output = resource(Request("get"))
+        self.assertEqual(json.loads(output.content)['data']['field1'], "trolol")
+        self.assertEqual(json.loads(output.content)['data']['field2'], 6)
+        self.assertEqual(output.status_code, 200)
+        
