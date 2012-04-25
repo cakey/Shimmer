@@ -4,7 +4,8 @@ It aids in routing requests to the appropriate method, handling exceptions, enco
 
 Shimmer's requirements are currently django and dateutil (hopefully removed soon).
 
-The most basic usage is:
+Basic Usage:
+------------
 
 In views.py:
 ```python
@@ -34,6 +35,8 @@ The four supported methods are currently:
 * POST: create
 * PUT: update
 * DELETE: delete
+
+
 
 
 You can provide an auth hook like so:
@@ -66,7 +69,8 @@ urlpattern = patterns('',
 GETting /myuserid/ will return a json object of {'data':"user_id_of_user"}
 
 
- -- Emitters --
+ Emitters
+ --------
  
  (Warning: The api needs (a lot of !) work here, as it's just grown organically in the projects its been used in.)
  
@@ -149,6 +153,8 @@ There is a lot of magic there, which will be reduced as the api is improved. The
 * self._any converts its argument from a model instance to things that can be serialised into json
 * self.data refers to the data that was edited in the manips
 * we return the modified dictionary of data
+
+
 
 For other use cases, look in the tests or ask. 
 There are few tests directly for Shimmer at the moment, but the framework is used in a number of applications that are extensively tested.
