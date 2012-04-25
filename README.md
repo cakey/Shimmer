@@ -2,6 +2,8 @@ This is a rest framework for use with Django.
 
 It aids in routing requests to the appropriate method, handling exceptions, encoding and decoding json, introduces 'Emitters' which help you aggregate data and structure a response, without repeating yourself, and an auth hook.
 
+Shimmer's requirements are currently django and dateutil (hopefully removed soon).
+
 The most basic usage is:
 
 In views.py:
