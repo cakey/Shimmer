@@ -99,7 +99,6 @@ class DoesNotExist(APIException):
         self.status = 404
         logging.info('api usage error: %s' % self.message)
 
-        
 class Mimer(object):
        
     def translate(self, request):
@@ -285,48 +284,6 @@ class Emitter(object):
         seria = json.dumps(data, ensure_ascii=False, indent=4)
         logging.info("rendered %s characters (end)" % len(seria))
         return seria    
-
-class CustomTemplateJSONEmitter(Emitter):
-    """
-        Example of a custom Emitter
-        filters by a cached_ids parameter which is {id:timestamp,...}, 
-        only returns new events or if the last modified timestamp has changed
-    """
-    def construct(self, data):
-        """
-            Calls the base constructor with the manips you want.
-        """              
-        manips = [self._template]
-        massagers = {type:_massage_template}
-        
-        
-        return self._construct(data, manips=manips,massagers=massagers)
-
-    def _template(self, data, ids):
-        """
-            This is an example data collection function, that collates a certain type of information we need.
-            Data and ids are dictionaries that store the data we need
-        """
-        
-        if len(ids['users'])>0: # save on db calls
-            logging.info("template")
-            # get all the user images
-            # get all the user tags
-            for userid, userdata in grabbeddata.iteritems():
-                data['users']['userid'] = datadata
-            
-        return data, ids
-        
-    def _massage_template(self, model_dict, data=None):
-        """
-            Example of overriding a massager to change the output of template.
-        """
-        model_dict['tags'] = self.data['tags'][data.id]
-        
-        del model_dict['modified']
-        del model_dict['created']
-        del model_dict['privacy']
-        return model_dict
                
 class BaseHandler(object):
     """
