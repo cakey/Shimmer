@@ -72,8 +72,6 @@ GETting /myuserid/ will return a json object of {'data':"user_id_of_user"}
 Emitters:
 ---------
  
- (Warning: The api needs (a lot of !) work here, as it's just grown organically in the projects its been used in.)
- 
  Emitters are used to change the output of model instances from your database.
  The idea is that if you have an api that returns events, you want the logic that constructs an event in a centralised place.
  If an Event is created by fetching data from a number of different tables such as locations, descriptions, comments, attending lists, photos etc, and a particular api call returns numerous events, then it is also important to create the response in a way that minimises database lookups.
@@ -138,15 +136,15 @@ class AnEmitter(Emitter):
         
         return model_dict
 ```
-There is a lot of magic there, which will be reduced as the api is improved. The important points are:
+The important points are:
 
-* self._construct starts the conversion from the view response to json using the provided manips and massagers
+* setup is called to define which manips and massagers get applied
 * manips can edit and use the data and ids which are referred to and editted by the massagers
 * model_dict is a python dictionary which has been constructed from a model instance
-* data (in the parameter to the massager) is the actual model instance
-* self._pre is True if we are in the initial traversal passof the data (collecting ids, and converting to python dictionaries), or False if we are in the second pass which involves massaging the data
-* self._ids is passed to the manips as ids
-* self._any converts its argument from a model instance to things that can be serialised into json
+* model_instance (in the parameter to the massager) is the actual model instance
+* self.collecting is True if we are in the initial traversal pass of the data (collecting ids, and converting to python dictionaries), or False if we are in the second pass which involves massaging the data
+* self.ids is used to place ids that you have found as you traverse through the response and the collectors are called
+* self.construct converts its argument from a model instance to things that can be serialised into json
 * self.data refers to the data that was edited in the manips
 * we return the modified dictionary of data
 
